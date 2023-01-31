@@ -1,0 +1,39 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "bytesguy/ubuntu-server-20.04-arm64"
+  config.vm.box_version = "1.0.0"
+  
+  # network
+  config.vm.network "public_network"
+  # config.vm.network "private_network", ip: "192.168.33.21"
+
+  config.vm.provider "vmware_desktop" do |vmware|
+    # vmware.gui = true
+    vmware.allowlist_verified = true
+    vmware.memory = "4096"
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    # Disable kernel updates
+    apt update
+    apt-mark hold linux-image-generic linux-headers-generic
+
+    # upgrade the system and delete unnecessary packages
+    apt upgrade -y
+
+    # install docker
+    sudo apt remove docker docker-engine docker.io containerd runc -y
+    sudo apt install \
+      ca-certificates \
+      curl \
+      gnupg \
+      lsb-release -y
+    # sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+        $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt update
+    sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+    apt autoremove -y
+  SHELL
+end
